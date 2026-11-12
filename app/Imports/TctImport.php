@@ -2,16 +2,18 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\ScopesNoneHeadingFormatter;
 use App\Models\Tct;
 use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Imports\HeadingRowFormatter;
 use function Laravel\Prompts\select;
 
-HeadingRowFormatter::default('none');
-class TctImport implements WithHeadingRow, WithMapping
+class TctImport implements WithHeadingRow, WithMapping, WithEvents
 {
+    use ScopesNoneHeadingFormatter;
+
 //    /**
 //    * @param array $row
 //    *

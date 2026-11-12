@@ -2,15 +2,17 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\ScopesNoneHeadingFormatter;
 use App\Models\Telecom;
 use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Imports\HeadingRowFormatter;
 
-HeadingRowFormatter::default('none');
-class TelecomImport implements WithHeadingRow, WithMapping
+class TelecomImport implements WithHeadingRow, WithMapping, WithEvents
 {
+    use ScopesNoneHeadingFormatter;
+
     /**
     * @param array $row
     *

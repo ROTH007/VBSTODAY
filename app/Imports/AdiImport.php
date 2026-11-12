@@ -2,16 +2,18 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\ScopesNoneHeadingFormatter;
 use App\Models\Adi;
 use App\Models\Tct;
 use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Imports\HeadingRowFormatter;
 
-HeadingRowFormatter::default('none');
-class AdiImport implements WithHeadingRow, WithMapping
+class AdiImport implements WithHeadingRow, WithMapping, WithEvents
 {
+    use ScopesNoneHeadingFormatter;
+
     /**
     * @param array $row
     *

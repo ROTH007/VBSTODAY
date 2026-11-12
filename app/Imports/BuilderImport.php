@@ -2,15 +2,17 @@
 
 namespace App\Imports;
 
+use App\Imports\Concerns\ScopesNoneHeadingFormatter;
 use App\Models\Builder;
 use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Imports\HeadingRowFormatter;
 
-HeadingRowFormatter::default('none');
-class BuilderImport implements ToModel,withHeadingRow
+class BuilderImport implements ToModel, WithHeadingRow, WithEvents
 {
+    use ScopesNoneHeadingFormatter;
+
 //    /**
 //    * @param array $row
 //    *

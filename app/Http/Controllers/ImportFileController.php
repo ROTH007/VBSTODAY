@@ -16,6 +16,7 @@ use http\Header;
 use Illuminate\Contracts\Session\Session;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Maatwebsite\Excel\Facades\Excel as Excel;
@@ -55,7 +56,7 @@ class ImportFileController extends Controller
         if ($company == 'cfocn') {
             $title = "CFOCN";
             $selectNeedData = Builder::where('infrastructure',"LIKE","%".$title."%")->get();
-            if ($validateCompanyHeader[0][0][0] == "work_order" && $validateCompanyHeader[0][0][1] == "port" &&
+            if ($validateCompanyHeader[0][0][0] == "work_order" && $validateCompanyHeader[0][0][1] == "subscriber_no." &&
                 $validateCompanyHeader[0][0][2] == "pos" && $validateCompanyHeader[0][0][3] == "team_install" &&
                 $validateCompanyHeader[0][0][4] == "create_time") {
                 $cfoStoreAsArray = Excel::toArray(new CfoImport(), $companyFile);
@@ -205,6 +206,8 @@ class ImportFileController extends Controller
 
     public function verifyData(Request $request)
     {
+        try {
+        set_time_limit(300);
         ini_set('memory_limit', '1G');
         $title="";
         $company = $request->input('company');
@@ -224,14 +227,39 @@ class ImportFileController extends Controller
         if ($validateBuilderHeader[0][0][0] == "id" && $validateBuilderHeader[0][0][1] == "name" && $validateBuilderHeader[0][0][2] == "active" &&
             $validateBuilderHeader[0][0][3] == "date" && $validateBuilderHeader[0][0][4] == "infrastructure" && $validateBuilderHeader[0][0][5] == "jobs" &&
             $validateBuilderHeader[0][0][6] == "category" && $validateBuilderHeader[0][0][7] == "installation_order") {
-            //Insert builder to database
-            if(Builder::count() <= 0) {
-                $saveBuilder = Excel::import(new BuilderImport(), $builderFile);
+
+            // Validate every row BEFORE touching builders — both columns
+            // are NOT NULL in the schema; a blank value here used to
+            // surface as a raw "active_id" DB error mid-import, after the
+            // previous data had already been destroyed.
+            foreach ($buildingStoreAsArray[0] as $rowIndex => $builderRow) {
+                $rowNumber = $rowIndex + 2; // +1 for 0-index, +1 for the heading row
+                if (trim((string) ($builderRow['id'] ?? '')) === '') {
+                    return redirect("/")->with("incorrectBuilder", "Builder row {$rowNumber} has a blank id.");
+                }
+                if (trim((string) ($builderRow['jobs'] ?? '')) === '') {
+                    return redirect("/")->with("incorrectBuilder", "Builder row {$rowNumber} has a blank jobs value.");
+                }
             }
+
+            // Atomic replace: if the import fails for any reason, the
+            // delete rolls back too and the previous valid data is left
+            // exactly as it was. TRUNCATE cannot be rolled back, so it is
+            // replaced with a transactional DELETE.
+            try {
+                DB::transaction(function () use ($builderFile) {
+                    Builder::query()->delete();
+                    Excel::import(new BuilderImport(), $builderFile);
+                });
+            } catch (\Throwable $e) {
+                Log::error('Builder import failed, rolled back: ' . $e->getMessage());
+
+                return redirect("/")->with("incorrectBuilder", "Builder import failed and was rolled back. Previous data is unchanged.");
+            }
+
                 if ($company == 'cfocn') {
                     $title = "CFOCN";
-                    $selectNeedData = Builder::where('infrastructure',"LIKE","%".$title."%")->get();
-                    $notDuplicate= $selectNeedData->toArray();
+                    $notDuplicate = DB::table('builders')->where('infrastructure', 'LIKE', '%'.$title.'%')->get()->map(fn($r) => (array) $r)->toArray();
                     if ($validateCompanyHeader[0][0][0] == "work_order" && $validateCompanyHeader[0][0][1] == "port" &&
                         $validateCompanyHeader[0][0][2] == "pos" && $validateCompanyHeader[0][0][3] == "team_install" &&
                         $validateCompanyHeader[0][0][4] == "create_time") {
@@ -250,19 +278,30 @@ class ImportFileController extends Controller
 //                        }
                         $jobsMap = [];
                         foreach ($buildingStoreAsArray[0] as $builderData) {
-                            if ($builderData['jobs'] != null) {
+                            if ($builderData['jobs'] != null && $builderData['infrastructure'] === 'CFOCN') {
                                 $jobsMap[$builderData['jobs']] = $builderData;
                             }
                         }
 
-                        // Step 2: Compare $cfoStoreAsArray against the hash map
+                        // Step 2: Compare $cfoStoreAsArray against the hash map and remove the matched builder rows by job number instead of the company file's row index.
+                        $matchedJobs = [];
                         foreach ($cfoStoreAsArray[0] as $key => $cfoData) {
                             if (isset($jobsMap[$cfoData['Work Order']])) {
                                 array_push($match, $cfoData);
-                                unset($notDuplicate[$key]);
+                                $matchedJobs[$cfoData['Work Order']] = true;
                                 unset($notMatch[$key]);
                             }
                         }
+
+                        // Remove matched builder rows by job number instead of the company file's row index.
+                        foreach ($notDuplicate as $ndKey => $builderRow) {
+                            if (isset($matchedJobs[$builderRow['jobs']])) {
+                                unset($notDuplicate[$ndKey]);
+                            }
+                        }
+                    }
+                    else {
+                        return redirect("/")->with("incorrectCompany", "Invalid Company Column name");
                     }
 
                     $companyHeader = ['Work Order','PORT','POS','Team Install','Create Time'];
@@ -391,9 +430,12 @@ class ImportFileController extends Controller
                 return redirect("/")->with("incorrectBuilder", "Invalid Builder Name");
             }
                     $fileName = $title." ".$request->input('status')." List";
-        $deleteDataFromDatabase = Builder::truncate();
-                    return Excel::download(new MainSheet($match , $notDuplicate, $notMatch, $companyHeader),  "$fileName.xlsx");
 
+                    return Excel::download(new MainSheet($match , $notDuplicate, $notMatch, $companyHeader),  "$fileName.xlsx");
+        } catch (\Throwable $e) {
+            Log::error($e->getMessage() . ' ' . $e->getFile() . ':' . $e->getLine());
+            throw $e;
+        }
     }
 //        }
 
