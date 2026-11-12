@@ -1,0 +1,50 @@
+{
+  "_BarChart-DIy8W5Bs.js": {
+    "file": "assets/BarChart-DIy8W5Bs.js",
+    "name": "BarChart"
+  },
+  "_axios-Dx1MULDz.js": {
+    "file": "assets/axios-Dx1MULDz.js",
+    "name": "axios"
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-l0sNRNKZ.js",
+    "name": "app",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-D2owXnQ-.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "imports": [
+      "_axios-Dx1MULDz.js"
+    ]
+  },
+  "resources/js/cfocn-wizard-entry.jsx": {
+    "file": "assets/cfocn-wizard-entry-BchntU6X.js",
+    "name": "cfocn-wizard-entry",
+    "src": "resources/js/cfocn-wizard-entry.jsx",
+    "isEntry": true,
+    "imports": [
+      "_BarChart-DIy8W5Bs.js"
+    ],
+    "css": [
+      "assets/cfocn-wizard-entry-Cl_qVTCq.css"
+    ]
+  },
+  "resources/js/react-entry.jsx": {
+    "file": "assets/react-entry-BUgNVQYd.js",
+    "name": "react-entry",
+    "src": "resources/js/react-entry.jsx",
+    "isEntry": true,
+    "imports": [
+      "_BarChart-DIy8W5Bs.js",
+      "_axios-Dx1MULDz.js"
+    ],
+    "css": [
+      "assets/react-entry-DSQG7_Ww.css"
+    ]
+  }
+}
